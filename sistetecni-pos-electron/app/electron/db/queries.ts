@@ -162,8 +162,10 @@ export const closeCash = (data: { id: string; countedCash: number; userId: strin
   const cash = db.prepare('SELECT * FROM cash_closures WHERE id = ?').get(data.id) as any;
   const closedAt = new Date().toISOString();
   const sales = (db
-    .prepare('SELECT COALESCE(SUM(total),0) as total, COALESCE(SUM(CASE WHEN payment_method = \"EFECTIVO\" THEN total ELSE 0 END),0) as cashSales FROM sales WHERE date BETWEEN ? AND ?')
-    .get(cash.opened_at, closedAt) as any);
+    .prepare(
+      'SELECT COALESCE(SUM(total),0) as total, COALESCE(SUM(CASE WHEN payment_method = ? THEN total ELSE 0 END),0) as cashSales FROM sales WHERE date BETWEEN ? AND ?',
+    )
+    .get('EFECTIVO', cash.opened_at, closedAt) as any);
   const expenses = (db.prepare('SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE date BETWEEN ? AND ?').get(cash.opened_at, closedAt) as any)
     .total;
   const expectedCash = cash.opening_cash + sales.cashSales - expenses;
