@@ -7,6 +7,7 @@ export const Cash = ({ user }: { user: any }) => {
   const [suggestion, setSuggestion] = useState<any>(null);
   const [opening, setOpening] = useState(0);
   const [openingNotes, setOpeningNotes] = useState('');
+  const [touched, setTouched] = useState(false);
   const [counted, setCounted] = useState(0);
 
   const refresh = async (): Promise<void> => {
@@ -19,8 +20,11 @@ export const Cash = ({ user }: { user: any }) => {
     setStatus(cashStatus);
     setSuggestion(openSuggestion);
 
-    if (!openCash && typeof openSuggestion?.suggestedOpeningCash === 'number') {
-      setOpening(openSuggestion.suggestedOpeningCash);
+    if (!openCash && !touched && typeof openSuggestion?.suggestedOpeningCash === 'number') {
+      const suggested = Number(openSuggestion.suggestedOpeningCash);
+      if (opening === 0 || opening === suggested) {
+        setOpening(suggested);
+      }
     }
   };
 
@@ -81,7 +85,14 @@ export const Cash = ({ user }: { user: any }) => {
           {suggestion?.lastClosedAt ? <p>Último cierre: {suggestion.lastClosedAt}</p> : null}
           <label>
             Efectivo inicial (hoy):
-            <input type="number" value={opening} onChange={(e) => setOpening(Number(e.target.value || 0))} />
+            <input
+              type="number"
+              value={opening}
+              onChange={(e) => {
+                setTouched(true);
+                setOpening(Number(e.target.value || 0));
+              }}
+            />
           </label>
 
           {openingDiffersFromSuggestion ? (
@@ -98,6 +109,7 @@ export const Cash = ({ user }: { user: any }) => {
                 return;
               }
               await ipc.cash.open({ userId: user.id, openingCash: opening, openingNotes: openingNotes.trim() });
+              setTouched(false);
               setOpeningNotes('');
               await refresh();
             }}
