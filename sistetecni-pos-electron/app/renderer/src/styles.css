@@ -1,0 +1,16 @@
+:root { font-family: Inter, Arial, sans-serif; }
+body { margin: 0; background: #f4f6fb; }
+* { box-sizing: border-box; }
+.layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+.sidebar { background: #1f2a44; color: white; padding: 16px; }
+.sidebar a { display:block; color:white; text-decoration:none; padding:12px; margin:6px 0; border-radius:10px; background:#2a365a; }
+.topbar { background: white; padding: 12px 20px; border-bottom: 1px solid #ddd; display:flex; justify-content:space-between; }
+.main { padding: 20px; }
+.card { background:white; padding:16px; border-radius:12px; margin-bottom:16px; }
+button, input, select { font-size: 18px; padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; }
+button { background: #1847d1; color: white; border: none; min-height: 48px; }
+table { width:100%; border-collapse: collapse; }
+th, td { border-bottom:1px solid #eee; padding:10px; text-align:left; }
+.low-stock { color:#d11; font-weight:700; }
+.grid { display:grid; gap:10px; }
+.grid-2 { grid-template-columns: repeat(2,minmax(0,1fr)); }
