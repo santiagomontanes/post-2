@@ -122,8 +122,9 @@ export const createSale = (input: any): { saleId: string; invoiceNumber: string 
       if (isFreeItem) {
         const description = String(item.description ?? '').trim();
         if (!description) throw new Error('Descripción requerida para ítem libre.');
-        if (item.unit_price < 0 || item.qty < 1) throw new Error('Valores inválidos para ítem libre.');
-        db.prepare('INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total,description) VALUES (?,?,?,?,?,?,?)').run(
+        const unitCost = Math.max(0, Number(item.unit_cost ?? 0));
+        if (item.unit_price < 0 || item.qty < 1 || unitCost < 0) throw new Error('Valores inválidos para ítem libre.');
+        db.prepare('INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total,description,unit_cost) VALUES (?,?,?,?,?,?,?,?)').run(
           uuid(),
           saleId,
           null,
@@ -131,15 +132,16 @@ export const createSale = (input: any): { saleId: string; invoiceNumber: string 
           item.unit_price,
           item.line_total,
           description,
+          unitCost,
         );
         continue;
       }
 
-      const product = db.prepare('SELECT stock FROM products WHERE id=?').get(item.product_id) as { stock: number } | undefined;
+      const product = db.prepare('SELECT stock, purchase_price FROM products WHERE id=?').get(item.product_id) as { stock: number; purchase_price: number } | undefined;
       if (!product || item.qty > product.stock) {
         throw new Error('Stock insuficiente para uno de los productos.');
       }
-      db.prepare('INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total,description) VALUES (?,?,?,?,?,?,?)').run(
+      db.prepare('INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total,description,unit_cost) VALUES (?,?,?,?,?,?,?,?)').run(
         uuid(),
         saleId,
         item.product_id,
@@ -147,6 +149,7 @@ export const createSale = (input: any): { saleId: string; invoiceNumber: string 
         item.unit_price,
         item.line_total,
         String(item.description ?? ''),
+        Number(product?.purchase_price ?? 0),
       );
       db.prepare('UPDATE products SET stock = stock - ?, updated_at = ? WHERE id = ?').run(item.qty, now, item.product_id);
     }
@@ -253,10 +256,10 @@ export const getTodaySummary = (): unknown => {
         (SELECT COALESCE(SUM(total),0) FROM sales WHERE date BETWEEN ? AND ?) as total_sales,
         (SELECT COALESCE(SUM(total),0) FROM sales WHERE date BETWEEN ? AND ? AND payment_method = ?) as cash_sales,
         (SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date BETWEEN ? AND ?) as total_expenses,
-        (SELECT COALESCE(SUM(si.qty * p.purchase_price),0)
+        (SELECT COALESCE(SUM(si.qty * COALESCE(si.unit_cost, p.purchase_price, 0)),0)
           FROM sale_items si
           JOIN sales s ON s.id = si.sale_id
-          JOIN products p ON p.id = si.product_id
+          LEFT JOIN products p ON p.id = si.product_id
           WHERE s.date BETWEEN ? AND ?) as total_costs`,
     )
     .get(start, end, start, end, 'EFECTIVO', start, end, start, end);
@@ -297,10 +300,10 @@ export const reportSummary = (from: string, to: string): unknown =>
       `SELECT
         (SELECT COALESCE(SUM(total),0) FROM sales WHERE date BETWEEN ? AND ?) as total_sales,
         (SELECT COALESCE(SUM(amount),0) FROM expenses WHERE date BETWEEN ? AND ?) as total_expenses,
-        (SELECT COALESCE(SUM(si.qty * p.purchase_price),0)
+        (SELECT COALESCE(SUM(si.qty * COALESCE(si.unit_cost, p.purchase_price, 0)),0)
           FROM sale_items si
           JOIN sales s ON s.id = si.sale_id
-          JOIN products p ON p.id = si.product_id
+          LEFT JOIN products p ON p.id = si.product_id
           WHERE s.date BETWEEN ? AND ?) as total_costs`,
     )
     .get(from, to, from, to, from, to);

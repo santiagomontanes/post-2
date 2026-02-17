@@ -12,6 +12,7 @@ type CartItem = {
   unit_price: number;
   line_total: number;
   stock: number | null;
+  unit_cost: number;
 };
 
 export const POS = ({ user }: { user: any }) => {
@@ -26,6 +27,7 @@ export const POS = ({ user }: { user: any }) => {
   const [freeOpen, setFreeOpen] = useState(false);
   const [freeDescription, setFreeDescription] = useState('');
   const [freePrice, setFreePrice] = useState(0);
+  const [freeCost, setFreeCost] = useState(0);
   const [freeQty, setFreeQty] = useState(1);
 
   useEffect(() => {
@@ -73,6 +75,7 @@ export const POS = ({ user }: { user: any }) => {
           unit_price: p.sale_price,
           line_total: p.sale_price,
           stock: p.stock,
+          unit_cost: Number(p.purchase_price ?? 0),
         },
       ];
     });
@@ -83,6 +86,7 @@ export const POS = ({ user }: { user: any }) => {
     if (!description) return setMessage('La descripción del ítem libre es obligatoria.');
     if (freePrice < 0) return setMessage('El precio unitario no puede ser negativo.');
     if (freeQty < 1) return setMessage('La cantidad debe ser mínimo 1.');
+    if (freeCost < 0) return setMessage('El costo unitario no puede ser negativo.');
 
     const id = `free-${Date.now()}`;
     setCart((current) => [
@@ -96,11 +100,13 @@ export const POS = ({ user }: { user: any }) => {
         unit_price: freePrice,
         line_total: freeQty * freePrice,
         stock: null,
+        unit_cost: freeCost,
       },
     ]);
 
     setFreeDescription('');
     setFreePrice(0);
+    setFreeCost(0);
     setFreeQty(1);
     setFreeOpen(false);
     setMessage('');
@@ -130,6 +136,7 @@ export const POS = ({ user }: { user: any }) => {
         qty: item.qty,
         unit_price: item.unit_price,
         line_total: item.line_total,
+        unit_cost: item.unit_cost,
       }));
 
       const res = await createSale({
@@ -211,6 +218,10 @@ export const POS = ({ user }: { user: any }) => {
         <label>
           Precio unitario
           <input type="number" min={0} value={freePrice} onChange={(e) => setFreePrice(Math.max(0, Number(e.target.value || 0)))} />
+        </label>
+        <label>
+          Costo unitario (opcional)
+          <input type="number" min={0} value={freeCost} onChange={(e) => setFreeCost(Math.max(0, Number(e.target.value || 0)))} />
         </label>
         <label>
           Cantidad

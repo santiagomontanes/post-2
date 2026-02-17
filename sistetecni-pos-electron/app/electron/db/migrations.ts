@@ -53,6 +53,7 @@ export const runMigrations = (db: Database.Database): void => {
       unit_price INTEGER NOT NULL,
       line_total INTEGER NOT NULL,
       description TEXT DEFAULT '',
+      unit_cost REAL NOT NULL DEFAULT 0,
       FOREIGN KEY (sale_id) REFERENCES sales(id),
       FOREIGN KEY (product_id) REFERENCES products(id)
     );
@@ -93,6 +94,7 @@ export const runMigrations = (db: Database.Database): void => {
 
   const saleItemCols = db.prepare('PRAGMA table_info(sale_items)').all() as Array<{ name: string; notnull: number }>;
   const hasDescription = saleItemCols.some((c) => c.name === 'description');
+  const hasUnitCost = saleItemCols.some((c) => c.name === 'unit_cost');
   const productIdCol = saleItemCols.find((c) => c.name === 'product_id');
   const needsNullableProductId = productIdCol?.notnull === 1;
 
@@ -107,15 +109,17 @@ export const runMigrations = (db: Database.Database): void => {
         unit_price INTEGER NOT NULL,
         line_total INTEGER NOT NULL,
         description TEXT DEFAULT '',
+        unit_cost REAL NOT NULL DEFAULT 0,
         FOREIGN KEY (sale_id) REFERENCES sales(id),
         FOREIGN KEY (product_id) REFERENCES products(id)
       );
-      INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total,description)
-      SELECT id,sale_id,product_id,qty,unit_price,line_total,'' FROM sale_items_old;
+      INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total,description,unit_cost)
+      SELECT id,sale_id,product_id,qty,unit_price,line_total,'',0 FROM sale_items_old;
       DROP TABLE sale_items_old;
     `);
-  } else if (!hasDescription) {
-    db.exec("ALTER TABLE sale_items ADD COLUMN description TEXT DEFAULT ''");
+  } else {
+    if (!hasDescription) db.exec("ALTER TABLE sale_items ADD COLUMN description TEXT DEFAULT ''");
+    if (!hasUnitCost) db.exec('ALTER TABLE sale_items ADD COLUMN unit_cost REAL NOT NULL DEFAULT 0');
   }
 
   const cashCols = db.prepare('PRAGMA table_info(cash_closures)').all() as Array<{ name: string }>;
