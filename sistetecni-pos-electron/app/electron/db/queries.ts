@@ -118,17 +118,35 @@ export const createSale = (input: any): { saleId: string; invoiceNumber: string 
     );
 
     for (const item of input.items) {
+      const isFreeItem = item.product_id == null;
+      if (isFreeItem) {
+        const description = String(item.description ?? '').trim();
+        if (!description) throw new Error('Descripción requerida para ítem libre.');
+        if (item.unit_price < 0 || item.qty < 1) throw new Error('Valores inválidos para ítem libre.');
+        db.prepare('INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total,description) VALUES (?,?,?,?,?,?,?)').run(
+          uuid(),
+          saleId,
+          null,
+          item.qty,
+          item.unit_price,
+          item.line_total,
+          description,
+        );
+        continue;
+      }
+
       const product = db.prepare('SELECT stock FROM products WHERE id=?').get(item.product_id) as { stock: number } | undefined;
       if (!product || item.qty > product.stock) {
         throw new Error('Stock insuficiente para uno de los productos.');
       }
-      db.prepare('INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total) VALUES (?,?,?,?,?,?)').run(
+      db.prepare('INSERT INTO sale_items (id,sale_id,product_id,qty,unit_price,line_total,description) VALUES (?,?,?,?,?,?,?)').run(
         uuid(),
         saleId,
         item.product_id,
         item.qty,
         item.unit_price,
         item.line_total,
+        String(item.description ?? ''),
       );
       db.prepare('UPDATE products SET stock = stock - ?, updated_at = ? WHERE id = ?').run(item.qty, now, item.product_id);
     }
@@ -267,7 +285,7 @@ export const reportTopProducts = (from: string, to: string): unknown[] =>
        FROM sale_items si
        JOIN sales s ON s.id = si.sale_id
        JOIN products p ON p.id = si.product_id
-       WHERE s.date BETWEEN ? AND ?
+       WHERE s.date BETWEEN ? AND ? AND si.product_id IS NOT NULL
        GROUP BY si.product_id
        ORDER BY qty DESC LIMIT 10`,
     )
