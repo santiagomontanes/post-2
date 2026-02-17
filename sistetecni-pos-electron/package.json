@@ -14,7 +14,7 @@
     "build:electron": "tsc -p tsconfig.electron.json",
     "lint": "eslint . --ext .ts,.tsx",
     "package": "npm run build && npm run rebuild:native && electron-builder --win",
-    "rebuild:native": "npx electron-rebuild -f -w better-sqlite3 || (echo [native-rebuild] Failed\\ to\\ rebuild\\ better-sqlite3\\ for\\ Electron.\\ Run\\ npm\\ run\\ rebuild:native\\ and\\ review\\ build\\ tools. && exit 1)"
+    "rebuild:native": "npx electron-rebuild -f -w better-sqlite3"
   },
   "build": {
     "appId": "com.sistetecni.pos",
