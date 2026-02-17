@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { deleteProduct, listProducts, saveProduct, updateProduct } from '../services/products';
+import { archiveProduct, listProducts, saveProduct, updateProduct } from '../services/products';
 import { Modal } from '../ui/Modal';
 
 const base = { brand:'',model:'',cpu:'',ram_gb:8,storage:'256GB',condition:'Usado',purchase_price:0,sale_price:0,stock:1,notes:'' };
@@ -73,15 +73,15 @@ export const Inventory = ({ role }: { role: string }) => {
                 setItems(prevItems.filter((x:any)=>x.id!==p.id));
                 setBusy(true);
                 try {
-                  await deleteProduct(p.id);
+                  await archiveProduct(p.id);
                   await load(q);
                 } catch (e: any) {
                   setItems(prevItems);
-                  alert(e?.message || 'No se pudo eliminar el producto.');
+                  alert(e?.message || 'No se pudo archivar el producto.');
                 } finally {
                   setBusy(false);
                 }
-              }}>Eliminar</button>}
+              }}>Archivar</button>}
             </td>
           </tr>)}</tbody>
       </table>

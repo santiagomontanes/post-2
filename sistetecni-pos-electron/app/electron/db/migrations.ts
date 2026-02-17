@@ -25,6 +25,7 @@ export const runMigrations = (db: Database.Database): void => {
       sale_price INTEGER NOT NULL,
       stock INTEGER NOT NULL,
       notes TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -78,6 +79,11 @@ export const runMigrations = (db: Database.Database): void => {
       notes TEXT
     );
   `);
+
+  const productCols = db.prepare('PRAGMA table_info(products)').all() as Array<{ name: string }>;
+  if (!productCols.some((c) => c.name === 'active')) {
+    db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
+  }
 };
 
 export const seedDefaultAdmin = (db: Database.Database): void => {

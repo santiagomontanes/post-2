@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { deleteProduct, listProducts, updateProduct, upsertProduct } from '../db/queries';
+import { archiveProduct, listProducts, updateProduct, upsertProduct } from '../db/queries';
 
 export const registerProductsIpc = (): void => {
   ipcMain.handle('products:list', (_e, search: string) => listProducts(search));
@@ -8,8 +8,8 @@ export const registerProductsIpc = (): void => {
     updateProduct(payload);
     return true;
   });
-  ipcMain.handle('products:delete', (_e, id: string) => {
-    deleteProduct(id);
+  ipcMain.handle('products:archive', (_e, id: string) => {
+    archiveProduct(id);
     return true;
   });
 };

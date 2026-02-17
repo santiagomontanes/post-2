@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('api', {
     list: (search: string) => ipcRenderer.invoke('products:list', search),
     save: (payload: unknown) => ipcRenderer.invoke('products:save', payload),
     update: (payload: unknown) => ipcRenderer.invoke('products:update', payload),
-    delete: (id: string) => ipcRenderer.invoke('products:delete', id),
+    archive: (id: string) => ipcRenderer.invoke('products:archive', id),
   },
   sales: {
     create: (payload: unknown) => ipcRenderer.invoke('sales:create', payload),

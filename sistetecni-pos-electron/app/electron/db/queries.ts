@@ -15,7 +15,7 @@ export const authUser = (email: string, password: string): { id: string; name: s
 export const listProducts = (search = ''): unknown[] => {
   const q = `%${search}%`;
   return getDb()
-    .prepare('SELECT * FROM products WHERE brand LIKE ? OR model LIKE ? OR cpu LIKE ? ORDER BY created_at DESC')
+    .prepare('SELECT * FROM products WHERE active = 1 AND (brand LIKE ? OR model LIKE ? OR cpu LIKE ?) ORDER BY created_at DESC')
     .all(q, q, q);
 };
 
@@ -28,8 +28,8 @@ export const upsertProduct = (payload: any): string => {
   } else {
     getDb()
       .prepare(
-        `INSERT INTO products (id,brand,model,cpu,ram_gb,storage,condition,purchase_price,sale_price,stock,notes,created_at,updated_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO products (id,brand,model,cpu,ram_gb,storage,condition,purchase_price,sale_price,stock,notes,active,created_at,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         id,
@@ -43,6 +43,7 @@ export const upsertProduct = (payload: any): string => {
         payload.sale_price,
         payload.stock,
         payload.notes ?? '',
+        1,
         now,
         now,
       );
@@ -72,8 +73,8 @@ export const updateProduct = (payload: any): void => {
     );
 };
 
-export const deleteProduct = (id: string): void => {
-  getDb().prepare('DELETE FROM products WHERE id = ?').run(id);
+export const archiveProduct = (id: string): void => {
+  getDb().prepare('UPDATE products SET active = 0, updated_at = ? WHERE id = ?').run(new Date().toISOString(), id);
 };
 
 export const nextInvoiceNumber = (): string => {
