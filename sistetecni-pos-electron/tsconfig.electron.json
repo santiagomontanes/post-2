@@ -4,7 +4,13 @@
     "outDir": "dist/electron",
     "module": "CommonJS",
     "moduleResolution": "node",
-    "types": ["node", "electron"]
+    "types": [
+      "node",
+      "electron"
+    ],
+    "rootDir": "app/electron"
   },
-  "include": ["app/electron/**/*.ts"]
+  "include": [
+    "app/electron/**/*.ts"
+  ]
 }
