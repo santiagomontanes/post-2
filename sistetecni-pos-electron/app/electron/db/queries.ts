@@ -24,24 +24,7 @@ export const upsertProduct = (payload: any): string => {
   const id = payload.id ?? uuid();
   const existing = getDb().prepare('SELECT id FROM products WHERE id = ?').get(id);
   if (existing) {
-    getDb()
-      .prepare(
-        `UPDATE products SET brand=?,model=?,cpu=?,ram_gb=?,storage=?,condition=?,purchase_price=?,sale_price=?,stock=?,notes=?,updated_at=? WHERE id=?`,
-      )
-      .run(
-        payload.brand,
-        payload.model,
-        payload.cpu,
-        payload.ram_gb,
-        payload.storage,
-        payload.condition,
-        payload.purchase_price,
-        payload.sale_price,
-        payload.stock,
-        payload.notes ?? '',
-        now,
-        id,
-      );
+    updateProduct({ ...payload, id });
   } else {
     getDb()
       .prepare(
@@ -65,6 +48,28 @@ export const upsertProduct = (payload: any): string => {
       );
   }
   return id;
+};
+
+export const updateProduct = (payload: any): void => {
+  const now = new Date().toISOString();
+  getDb()
+    .prepare(
+      `UPDATE products SET brand=?,model=?,cpu=?,ram_gb=?,storage=?,condition=?,purchase_price=?,sale_price=?,stock=?,notes=?,updated_at=? WHERE id=?`,
+    )
+    .run(
+      payload.brand,
+      payload.model,
+      payload.cpu,
+      payload.ram_gb,
+      payload.storage,
+      payload.condition,
+      payload.purchase_price,
+      payload.sale_price,
+      payload.stock,
+      payload.notes ?? '',
+      now,
+      payload.id,
+    );
 };
 
 export const deleteProduct = (id: string): void => {
