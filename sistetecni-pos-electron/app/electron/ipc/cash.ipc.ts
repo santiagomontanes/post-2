@@ -1,11 +1,12 @@
 import { ipcMain } from 'electron';
-import { closeCash, getCashStatus, getOpenCash, openCash } from '../db/queries';
+import { closeCash, getCashStatus, getOpenCash, getOpenSuggestion, openCash } from '../db/queries';
 import { createAutomaticBackup } from './backups.ipc';
 
 export const registerCashIpc = (): void => {
   ipcMain.handle('cash:open', (_e, payload) => openCash(payload));
   ipcMain.handle('cash:get-open', () => getOpenCash());
   ipcMain.handle('cash:get-status', () => getCashStatus());
+  ipcMain.handle('cash:get-open-suggestion', () => getOpenSuggestion());
   ipcMain.handle('cash:close', (_e, payload) => {
     const result = closeCash(payload);
     const backupPath = createAutomaticBackup();

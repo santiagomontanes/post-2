@@ -70,6 +70,7 @@ export const runMigrations = (db: Database.Database): void => {
       opened_at TEXT NOT NULL,
       closed_at TEXT,
       opened_by TEXT NOT NULL,
+      opening_notes TEXT,
       closed_by TEXT,
       opening_cash INTEGER NOT NULL,
       expected_cash INTEGER,
@@ -88,6 +89,9 @@ export const runMigrations = (db: Database.Database): void => {
 
 
   const cashCols = db.prepare('PRAGMA table_info(cash_closures)').all() as Array<{ name: string }>;
+  if (!cashCols.some((c) => c.name === 'opening_notes')) {
+    db.exec('ALTER TABLE cash_closures ADD COLUMN opening_notes TEXT');
+  }
   if (!cashCols.some((c) => c.name === 'difference')) {
     db.exec('ALTER TABLE cash_closures ADD COLUMN difference INTEGER');
   }

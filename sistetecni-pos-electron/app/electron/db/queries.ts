@@ -149,13 +149,26 @@ export const addExpense = (data: any): string => {
 export const listExpenses = (from: string, to: string): unknown[] =>
   getDb().prepare('SELECT * FROM expenses WHERE date BETWEEN ? AND ? ORDER BY date DESC').all(from, to);
 
-export const openCash = (data: { userId: string; openingCash: number }): string => {
+export const getLastCashClosure = (): unknown =>
+  getDb().prepare('SELECT * FROM cash_closures WHERE closed_at IS NOT NULL ORDER BY closed_at DESC LIMIT 1').get();
+
+export const getOpenSuggestion = (): unknown => {
+  const last = getLastCashClosure() as any;
+  if (!last) return { suggestedOpeningCash: null, lastClosedAt: null };
+  return {
+    suggestedOpeningCash: last.counted_cash ?? null,
+    lastClosedAt: last.closed_at ?? null,
+  };
+};
+
+export const openCash = (data: { userId: string; openingCash: number; openingNotes?: string }): string => {
   const id = uuid();
-  getDb().prepare('INSERT INTO cash_closures (id,opened_at,opened_by,opening_cash) VALUES (?,?,?,?)').run(
+  getDb().prepare('INSERT INTO cash_closures (id,opened_at,opened_by,opening_cash,opening_notes) VALUES (?,?,?,?,?)').run(
     id,
     new Date().toISOString(),
     data.userId,
     data.openingCash,
+    data.openingNotes ?? '',
   );
   return id;
 };

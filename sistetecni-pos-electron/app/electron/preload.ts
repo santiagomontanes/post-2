@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('api', {
     open: (payload: unknown) => ipcRenderer.invoke('cash:open', payload),
     getOpen: () => ipcRenderer.invoke('cash:get-open'),
     getStatus: () => ipcRenderer.invoke('cash:get-status'),
+    getOpenSuggestion: () => ipcRenderer.invoke('cash:get-open-suggestion'),
     close: (payload: unknown) => ipcRenderer.invoke('cash:close', payload),
   },
   reports: {
