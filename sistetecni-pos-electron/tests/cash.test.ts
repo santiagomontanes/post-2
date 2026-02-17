@@ -25,11 +25,13 @@ describe('cash queries', () => {
 
   test('getCashStatus computes expectedCash with cash sales and expenses', () => {
     const cashId = openCash({ userId: 'user-1', openingCash: 100000 }) as string;
+    const opened = db.prepare('SELECT opened_at FROM cash_closures WHERE id = ?').get(cashId) as { opened_at: string };
+    const inRangeDate = opened.opened_at;
 
     db.prepare('INSERT INTO sales (id,invoice_number,date,user_id,payment_method,subtotal,discount,total,customer_name,customer_id,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(
       'sale-1',
       'ST-2025-000001',
-      '2025-01-10T12:10:00.000Z',
+      inRangeDate,
       'user-1',
       'EFECTIVO',
       50000,
@@ -37,16 +39,16 @@ describe('cash queries', () => {
       50000,
       '',
       '',
-      '2025-01-10T12:10:00.000Z',
+      inRangeDate,
     );
 
     db.prepare('INSERT INTO expenses (id,date,concept,amount,notes,created_at) VALUES (?,?,?,?,?,?)').run(
       'exp-1',
-      '2025-01-10T12:15:00.000Z',
+      inRangeDate,
       'Taxi',
       10000,
       '',
-      '2025-01-10T12:15:00.000Z',
+      inRangeDate,
     );
 
     const status = getCashStatus() as any;
