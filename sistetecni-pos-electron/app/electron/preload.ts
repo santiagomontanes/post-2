@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('api', {
     salesByDay: (from: string, to: string) => ipcRenderer.invoke('reports:sales-by-day', from, to),
     topProducts: (from: string, to: string) => ipcRenderer.invoke('reports:top-products', from, to),
     summary: (from: string, to: string) => ipcRenderer.invoke('reports:summary', from, to),
+    todaySummary: () => ipcRenderer.invoke('reports:today-summary'),
+    last7DaysSales: () => ipcRenderer.invoke('reports:last-7-days-sales'),
   },
   backups: {
     export: () => ipcRenderer.invoke('backups:export'),
