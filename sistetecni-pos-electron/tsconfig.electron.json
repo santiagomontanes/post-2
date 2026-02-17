@@ -8,9 +8,11 @@
       "node",
       "electron"
     ],
-    "rootDir": "app/electron"
+    "rootDir": "app/electron",
+    "skipLibCheck": true
   },
   "include": [
-    "app/electron/**/*.ts"
+    "app/electron/**/*.ts",
+    "app/electron/**/*.d.ts"
   ]
 }

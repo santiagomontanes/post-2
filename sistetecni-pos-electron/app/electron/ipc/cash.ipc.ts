@@ -8,6 +8,7 @@ export const registerCashIpc = (): void => {
   ipcMain.handle('cash:close', (_e, payload) => {
     const result = closeCash(payload);
     const backupPath = createAutomaticBackup();
-    return { ...result, backupPath };
+    const base = typeof result === 'object' && result !== null ? result : {};
+    return { ...base, backupPath };
   });
 };
