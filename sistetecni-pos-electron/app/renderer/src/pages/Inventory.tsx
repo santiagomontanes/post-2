@@ -99,7 +99,8 @@ export const Inventory = ({ role }: { role: string }) => {
             if (isInvalid(editForm)) return alert('Valores inválidos: ram_gb, stock y precios no pueden ser negativos.');
             setBusy(true);
             try {
-              await updateProduct(editForm);
+              if (!editing?.id) { alert('Missing product id'); return; }
+              await updateProduct({ ...editForm, id: editing.id });
               setEditing(null);
               await load(q);
             } catch (e: any) {
