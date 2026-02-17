@@ -7,7 +7,9 @@ export const Modal: React.FC<{ open: boolean; children: React.ReactNode; onClose
     <div
       role="dialog"
       aria-modal="true"
-      onMouseDown={() => onClose?.()}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -17,12 +19,14 @@ export const Modal: React.FC<{ open: boolean; children: React.ReactNode; onClose
         alignItems: 'center',
         justifyContent: 'center',
         padding: 16,
+        pointerEvents: 'auto',
       }}
     >
       <div
         className="card"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ width: 'min(900px, 96vw)', maxHeight: '90vh', overflow: 'auto' }}
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 'min(900px, 96vw)', maxHeight: '90vh', overflow: 'auto', pointerEvents: 'auto' }}
       >
         {children}
       </div>

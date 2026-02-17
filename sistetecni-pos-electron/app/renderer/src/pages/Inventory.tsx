@@ -26,7 +26,16 @@ export const Inventory = ({ role }: { role: string }) => {
 
   useEffect(()=>{ void load(q); },[q]);
 
+  useEffect(() => () => {
+    loadId.current += 1;
+    setEditing(null);
+  }, []);
+
   const isInvalid = (data: any) => data.ram_gb < 0 || data.stock < 0 || data.purchase_price < 0 || data.sale_price < 0;
+
+  useEffect(() => {
+    if (!editing) setEditForm(base);
+  }, [editing]);
 
   return <div>
     <div className="card grid grid-2">
