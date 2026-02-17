@@ -51,9 +51,11 @@ export const upsertProduct = (payload: any): string => {
   return id;
 };
 
-export const updateProduct = (payload: any): void => {
+export const updateProduct = (payload: any): unknown => {
+  if (!payload?.id) throw new Error('Missing product id');
+
   const now = new Date().toISOString();
-  getDb()
+  const result = getDb()
     .prepare(
       `UPDATE products SET brand=?,model=?,cpu=?,ram_gb=?,storage=?,condition=?,purchase_price=?,sale_price=?,stock=?,notes=?,updated_at=? WHERE id=?`,
     )
@@ -71,6 +73,10 @@ export const updateProduct = (payload: any): void => {
       now,
       payload.id,
     );
+
+  if (!result.changes) throw new Error('Product not updated');
+
+  return getDb().prepare('SELECT * FROM products WHERE id = ?').get(payload.id);
 };
 
 export const archiveProduct = (id: string): void => {
