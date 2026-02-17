@@ -162,6 +162,28 @@ export const openCash = (data: { userId: string; openingCash: number }): string 
 export const getOpenCash = (): unknown =>
   getDb().prepare('SELECT * FROM cash_closures WHERE closed_at IS NULL ORDER BY opened_at DESC LIMIT 1').get();
 
+
+export const getCashStatus = (): unknown => {
+  const db = getDb();
+  const open = db.prepare('SELECT * FROM cash_closures WHERE closed_at IS NULL ORDER BY opened_at DESC LIMIT 1').get() as any;
+  if (!open) return null;
+
+  const now = new Date().toISOString();
+  const cashSales = (db
+    .prepare('SELECT COALESCE(SUM(total),0) as total FROM sales WHERE date BETWEEN ? AND ? AND payment_method = ?')
+    .get(open.opened_at, now, 'EFECTIVO') as any).total;
+  const expenses = (db.prepare('SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE date BETWEEN ? AND ?').get(open.opened_at, now) as any).total;
+  const expectedCash = open.opening_cash + cashSales - expenses;
+
+  return {
+    openedAt: open.opened_at,
+    openingCash: open.opening_cash,
+    cashSales,
+    expenses,
+    expectedCash,
+  };
+};
+
 export const closeCash = (data: { id: string; countedCash: number; userId: string; notes: string }): unknown => {
   const db = getDb();
   const cash = db.prepare('SELECT * FROM cash_closures WHERE id = ?').get(data.id) as any;
