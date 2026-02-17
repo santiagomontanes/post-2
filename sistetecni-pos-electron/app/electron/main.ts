@@ -6,7 +6,7 @@ import { registerProductsIpc } from './ipc/products.ipc';
 import { registerSalesIpc } from './ipc/sales.ipc';
 import { registerExpensesIpc } from './ipc/expenses.ipc';
 import { registerReportsIpc } from './ipc/reports.ipc';
-import { registerBackupsIpc } from './ipc/backups.ipc';
+import { ensureDailyBackup, registerBackupsIpc } from './ipc/backups.ipc';
 import { registerCashIpc } from './ipc/cash.ipc';
 
 const createWindow = async (): Promise<void> => {
@@ -34,5 +34,6 @@ app.whenReady().then(async () => {
   registerReportsIpc();
   registerBackupsIpc();
   registerCashIpc();
+  await ensureDailyBackup();
   await createWindow();
 });

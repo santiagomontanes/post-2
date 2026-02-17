@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('api', {
     last7DaysSales: () => ipcRenderer.invoke('reports:last-7-days-sales'),
   },
   backups: {
+    createManual: () => ipcRenderer.invoke('backup:create-manual'),
     export: () => ipcRenderer.invoke('backups:export'),
     restore: () => ipcRenderer.invoke('backups:restore'),
   },
