@@ -62,7 +62,7 @@
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
     "wait-on": "^8.0.2",
-    "electron-rebuild": "^3.6.1"
+    "electron-rebuild": "^3.2.9"
   },
   "engines": {
     "node": ">=20.19.0"
