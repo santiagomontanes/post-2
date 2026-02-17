@@ -76,6 +76,7 @@ export const runMigrations = (db: Database.Database): void => {
       counted_cash INTEGER,
       total_sales INTEGER,
       total_expenses INTEGER,
+      difference INTEGER,
       notes TEXT
     );
   `);
@@ -83,6 +84,12 @@ export const runMigrations = (db: Database.Database): void => {
   const productCols = db.prepare('PRAGMA table_info(products)').all() as Array<{ name: string }>;
   if (!productCols.some((c) => c.name === 'active')) {
     db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
+  }
+
+
+  const cashCols = db.prepare('PRAGMA table_info(cash_closures)').all() as Array<{ name: string }>;
+  if (!cashCols.some((c) => c.name === 'difference')) {
+    db.exec('ALTER TABLE cash_closures ADD COLUMN difference INTEGER');
   }
 };
 

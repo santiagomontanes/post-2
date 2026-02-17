@@ -197,10 +197,11 @@ export const closeCash = (data: { id: string; countedCash: number; userId: strin
   const expenses = (db.prepare('SELECT COALESCE(SUM(amount),0) as total FROM expenses WHERE date BETWEEN ? AND ?').get(cash.opened_at, closedAt) as any)
     .total;
   const expectedCash = cash.opening_cash + sales.cashSales - expenses;
+  const diff = data.countedCash - expectedCash;
   db.prepare(
-    'UPDATE cash_closures SET closed_at=?,closed_by=?,counted_cash=?,expected_cash=?,total_sales=?,total_expenses=?,notes=? WHERE id=?',
-  ).run(closedAt, data.userId, data.countedCash, expectedCash, sales.total, expenses, data.notes, data.id);
-  return { closedAt, expectedCash, totalSales: sales.total, totalExpenses: expenses, diff: data.countedCash - expectedCash };
+    'UPDATE cash_closures SET closed_at=?,closed_by=?,counted_cash=?,expected_cash=?,total_sales=?,total_expenses=?,difference=?,notes=? WHERE id=?',
+  ).run(closedAt, data.userId, data.countedCash, expectedCash, sales.total, expenses, diff, data.notes, data.id);
+  return { closedAt, expectedCash, totalSales: sales.total, totalExpenses: expenses, diff };
 };
 
 export const getTodaySummary = (): unknown => {
