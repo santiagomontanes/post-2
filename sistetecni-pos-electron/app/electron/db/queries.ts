@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { getDb } from './db';
 
-export type Role = 'ADMIN' | 'SELLER';
+export type Role = 'ADMIN' | 'SUPERVISOR' | 'SELLER';
 
 export const authUser = (email: string, password: string): { id: string; name: string; role: Role; email: string } | null => {
   const row = getDb().prepare('SELECT id,name,email,password_hash,role FROM users WHERE email = ?').get(email) as

@@ -9,7 +9,7 @@ export const runMigrations = (db: Database.Database): void => {
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK (role in ('ADMIN','SELLER')),
+      role TEXT NOT NULL CHECK (role in ('ADMIN','SUPERVISOR','SELLER')),
       created_at TEXT NOT NULL
     );
 
@@ -85,10 +85,41 @@ export const runMigrations = (db: Database.Database): void => {
   `);
 
 
-  const userCols = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
-  if (!userCols.some((c) => c.name === 'created_at')) {
-    db.exec('ALTER TABLE users ADD COLUMN created_at TEXT');
-    db.prepare("UPDATE users SET created_at = ? WHERE created_at IS NULL OR created_at = ''").run(new Date().toISOString());
+
+  const userColsBefore = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+  const usersSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql?: string } | undefined;
+  const usersHasSupervisor = usersSchema?.sql?.includes("'SUPERVISOR'") ?? false;
+  const usersHasCreatedAt = userColsBefore.some((c) => c.name === 'created_at');
+
+  if (!usersHasSupervisor || !usersHasCreatedAt) {
+    const now = new Date().toISOString();
+    db.exec('PRAGMA foreign_keys=OFF');
+    db.exec('ALTER TABLE users RENAME TO users_old');
+    db.exec(`
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role in ('ADMIN','SUPERVISOR','SELLER')),
+        created_at TEXT NOT NULL
+      );
+    `);
+
+    if (usersHasCreatedAt) {
+      db.exec(`
+        INSERT INTO users (id,name,email,password_hash,role,created_at)
+        SELECT id,name,email,password_hash,role,COALESCE(NULLIF(created_at, ''), '${now}') FROM users_old;
+      `);
+    } else {
+      db.exec(`
+        INSERT INTO users (id,name,email,password_hash,role,created_at)
+        SELECT id,name,email,password_hash,role,'${now}' FROM users_old;
+      `);
+    }
+
+    db.exec('DROP TABLE users_old');
+    db.exec('PRAGMA foreign_keys=ON');
   }
 
   const productCols = db.prepare('PRAGMA table_info(products)').all() as Array<{ name: string }>;

@@ -1,25 +1,25 @@
 import { ipcMain } from 'electron';
 import { archiveProduct, listPosProducts, listProducts, updateProduct, upsertProduct } from '../db/queries';
-import { requireAdmin, requireRole } from './rbac';
+import { requirePermissionFromPayload } from './rbac';
 
 export const registerProductsIpc = (): void => {
   ipcMain.handle('pos:products:list', (_e, payload) => {
-    requireRole(payload, ['ADMIN', 'SELLER']);
+    requirePermissionFromPayload(payload, 'pos:sell');
     return listPosProducts(String((payload as any)?.search ?? ''));
   });
 
   ipcMain.handle('products:list', (_e, payload) => {
-    requireAdmin(payload);
+    requirePermissionFromPayload(payload, 'inventory:read');
     return listProducts(String((payload as any)?.search ?? ''));
   });
 
   ipcMain.handle('products:save', (_e, payload) => {
-    requireAdmin(payload);
+    requirePermissionFromPayload(payload, 'inventory:write');
     return upsertProduct((payload as any)?.product ?? payload);
   });
 
   ipcMain.handle('products:update', (_e, payload) => {
-    requireAdmin(payload);
+    requirePermissionFromPayload(payload, 'inventory:write');
     const productPayload = (payload as any)?.product ?? payload;
     const id = (productPayload as { id?: string } | undefined)?.id;
     if (!id) throw new Error('Missing product id');
@@ -28,7 +28,7 @@ export const registerProductsIpc = (): void => {
   });
 
   ipcMain.handle('products:archive', (_e, payload) => {
-    requireAdmin(payload);
+    requirePermissionFromPayload(payload, 'inventory:write');
     const id = (payload as any)?.id ?? payload;
     archiveProduct(id);
     return true;

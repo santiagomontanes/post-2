@@ -5,7 +5,7 @@ export const Users = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'ADMIN' | 'SELLER'>('SELLER');
+  const [role, setRole] = useState<'ADMIN' | 'SUPERVISOR' | 'SELLER'>('SELLER');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -48,8 +48,9 @@ export const Users = () => {
         <h3>Crear usuario</h3>
         <input placeholder="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
         <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <select value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'SELLER')}>
+        <select value={role} onChange={(e) => setRole(e.target.value as 'ADMIN' | 'SUPERVISOR' | 'SELLER')}>
           <option value="SELLER">SELLER</option>
+          <option value="SUPERVISOR">SUPERVISOR</option>
           <option value="ADMIN">ADMIN</option>
         </select>
         <input type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} />

@@ -8,7 +8,7 @@ export const setSessionUser = (user: User | null): void => {
 
 export const getSessionUser = (): User | null => currentUser;
 
-export const getAuthContext = (): { userId: string; role: 'ADMIN' | 'SELLER' } => {
+export const getAuthContext = (): { userId: string; role: 'ADMIN' | 'SUPERVISOR' | 'SELLER' } => {
   if (!currentUser) throw new Error('No autorizado');
   return { userId: currentUser.id, role: currentUser.role };
 };

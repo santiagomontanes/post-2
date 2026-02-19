@@ -8,11 +8,12 @@
       "node",
       "electron"
     ],
-    "rootDir": "app/electron",
+    "rootDir": ".",
     "skipLibCheck": true
   },
   "include": [
     "app/electron/**/*.ts",
-    "app/electron/**/*.d.ts"
+    "app/electron/**/*.d.ts",
+    "shared/**/*.ts"
   ]
 }

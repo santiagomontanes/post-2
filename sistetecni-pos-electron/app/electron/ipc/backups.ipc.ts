@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { app, dialog, ipcMain } from 'electron';
 import { getDb, getDbPath } from '../db/db';
-import { requireAdmin } from './rbac';
+import { requirePermissionFromPayload } from './rbac';
 
 type BackupReason = 'manual' | 'daily' | 'cash_close';
 
@@ -65,7 +65,7 @@ export const ensureDailyBackup = async (): Promise<string | null> => {
 export const registerBackupsIpc = (): void => {
   ipcMain.handle('backup:create-manual', async (_e, payload) => {
     try {
-      requireAdmin(payload);
+      requirePermissionFromPayload(payload, 'config:write');
       return await createBackup('manual');
     } catch {
       return null;
@@ -74,7 +74,7 @@ export const registerBackupsIpc = (): void => {
 
   ipcMain.handle('backups:export', async (_e, payload) => {
     try {
-      requireAdmin(payload);
+      requirePermissionFromPayload(payload, 'config:write');
       const target = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
       if (target.canceled || !target.filePaths[0]) return null;
       const out = path.join(target.filePaths[0], backupName());
@@ -88,7 +88,7 @@ export const registerBackupsIpc = (): void => {
 
   ipcMain.handle('backups:restore', async (_e, payload) => {
     try {
-      requireAdmin(payload);
+      requirePermissionFromPayload(payload, 'config:write');
       const file = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: 'SQLite DB', extensions: ['db'] }] });
       if (file.canceled || !file.filePaths[0]) return false;
       fs.copyFileSync(file.filePaths[0], getDbPath());

@@ -1,33 +1,46 @@
-import { requireAdmin, requireRole, requireSalesAccess } from '../app/electron/ipc/rbac';
+import { can, requirePermission, rolePermissions, type Permission } from '../shared/permissions';
 
-describe('RBAC guards', () => {
-  test('SELLER cannot run admin modules', () => {
-    const seller = { role: 'SELLER' };
-
-    // products:save/update/archive
-    expect(() => requireAdmin(seller)).toThrow('FORBIDDEN');
-
-    // cash:open/status/close
-    expect(() => requireAdmin(seller)).toThrow('FORBIDDEN');
-
-    // reports:*
-    expect(() => requireAdmin(seller)).toThrow('FORBIDDEN');
+describe('permissions RBAC', () => {
+  test('SELLER permissions', () => {
+    expect(can('SELLER', 'pos:sell')).toBe(true);
+    expect(can('SELLER', 'sales:read:own')).toBe(true);
+    expect(can('SELLER', 'inventory:write')).toBe(false);
+    expect(can('SELLER', 'cash:read')).toBe(false);
   });
 
-  test('SELLER can access POS-only channels', () => {
-    const seller = { role: 'SELLER' };
-
-    // pos:products:list
-    expect(() => requireRole(seller, ['ADMIN', 'SELLER'])).not.toThrow();
-
-    // sales:create
-    expect(() => requireSalesAccess(seller)).not.toThrow();
+  test('SUPERVISOR permissions', () => {
+    expect(can('SUPERVISOR', 'pos:sell')).toBe(true);
+    expect(can('SUPERVISOR', 'sales:read:all')).toBe(true);
+    expect(can('SUPERVISOR', 'cash:openclose')).toBe(true);
+    expect(can('SUPERVISOR', 'reports:read')).toBe(true);
+    expect(can('SUPERVISOR', 'users:write')).toBe(false);
   });
 
-  test('ADMIN has full access', () => {
-    const admin = { role: 'ADMIN' };
-    expect(() => requireAdmin(admin)).not.toThrow();
-    expect(() => requireRole(admin, ['ADMIN', 'SELLER'])).not.toThrow();
-    expect(() => requireSalesAccess(admin)).not.toThrow();
+  test('ADMIN has all permissions', () => {
+    const all: Permission[] = [
+      'pos:sell',
+      'sales:read:own',
+      'sales:read:all',
+      'cash:openclose',
+      'cash:read',
+      'users:read',
+      'users:write',
+      'reports:read',
+      'inventory:read',
+      'inventory:write',
+      'audit:read',
+      'config:write',
+    ];
+
+    for (const p of all) {
+      expect(can('ADMIN', p)).toBe(true);
+      expect(() => requirePermission('ADMIN', p)).not.toThrow();
+    }
+    expect(rolePermissions('ADMIN').size).toBe(all.length);
+  });
+
+  test('requirePermission throws FORBIDDEN when role cannot', () => {
+    expect(() => requirePermission('SELLER', 'users:write')).toThrow('FORBIDDEN');
+    expect(() => requirePermission('SUPERVISOR', 'inventory:write')).toThrow('FORBIDDEN');
   });
 });

@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'SELLER';
+export type Role = 'ADMIN' | 'SUPERVISOR' | 'SELLER';
 export type User = { id: string; name: string; email: string; role: Role };
 export type Product = {
   id?: string;

@@ -1,21 +1,14 @@
-export type AppRole = 'ADMIN' | 'SELLER';
+import { requirePermission, type Permission, type Role } from '../../../shared/permissions';
 
-export const getRoleFromPayload = (payload: unknown): AppRole | null => {
+export const getRoleFromPayload = (payload: unknown): Role | null => {
   const role = (payload as { role?: unknown } | null | undefined)?.role;
-  if (role === 'ADMIN' || role === 'SELLER') return role;
+  if (role === 'ADMIN' || role === 'SUPERVISOR' || role === 'SELLER') return role;
   return null;
 };
 
-export const requireRole = (payload: unknown, allowed: AppRole[]): AppRole => {
+export const requirePermissionFromPayload = (payload: unknown, permission: Permission): Role => {
   const role = getRoleFromPayload(payload);
-  if (!role || !allowed.includes(role)) throw new Error('FORBIDDEN');
+  if (!role) throw new Error('FORBIDDEN');
+  requirePermission(role, permission);
   return role;
-};
-
-export const requireAdmin = (payload: unknown): void => {
-  requireRole(payload, ['ADMIN']);
-};
-
-export const requireSalesAccess = (payload: unknown): void => {
-  requireRole(payload, ['ADMIN', 'SELLER']);
 };

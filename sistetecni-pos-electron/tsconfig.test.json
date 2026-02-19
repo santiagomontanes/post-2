@@ -3,9 +3,16 @@
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "node",
-    "types": ["node", "jest"],
+    "types": [
+      "node",
+      "jest"
+    ],
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["tests/**/*.ts", "app/electron/**/*.ts"]
+  "include": [
+    "tests/**/*.ts",
+    "app/electron/**/*.ts",
+    "shared/**/*.ts"
+  ]
 }
