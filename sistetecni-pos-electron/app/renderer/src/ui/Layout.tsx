@@ -5,7 +5,7 @@ import { User } from '../types';
 
 export const Layout = ({ user }: { user: User | null }) => (
   <div className="layout">
-    <Sidebar />
+    <Sidebar role={user?.role ?? 'SELLER'} />
     <div>
       <Topbar user={user} />
       <main className="main"><Outlet /></main>

@@ -3,6 +3,7 @@ import { Bar } from 'react-chartjs-2';
 import { CategoryScale, Chart as ChartJS, LinearScale, BarElement } from 'chart.js';
 import { last7DaysSales, todaySummary } from '../services/reports';
 import { ipc } from '../services/ipcClient';
+import { getAuthContext } from '../services/session';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement);
 
@@ -18,7 +19,7 @@ export const Dashboard = () => {
       setLoading(true);
       setError('');
       try {
-        const [t, s7, cash] = await Promise.all([todaySummary(), last7DaysSales(), ipc.cash.getStatus()]);
+        const [t, s7, cash] = await Promise.all([todaySummary(), last7DaysSales(), ipc.cash.getStatus(getAuthContext())]);
         setToday(t ?? { total_sales: 0, cash_sales: 0, total_expenses: 0, total_costs: 0 });
         setSales7(s7 ?? []);
         setCashStatus(cash);

@@ -19,6 +19,16 @@ export const listProducts = (search = ''): unknown[] => {
     .all(q, q, q);
 };
 
+
+export const listPosProducts = (search = ''): unknown[] => {
+  const q = `%${search}%`;
+  return getDb()
+    .prepare(
+      'SELECT id,brand,model,cpu,ram_gb,storage,sale_price,stock FROM products WHERE active = 1 AND (brand LIKE ? OR model LIKE ? OR cpu LIKE ?) ORDER BY created_at DESC',
+    )
+    .all(q, q, q);
+};
+
 export const upsertProduct = (payload: any): string => {
   const now = new Date().toISOString();
   const id = payload.id ?? uuid();

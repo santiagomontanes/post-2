@@ -1,15 +1,20 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { createSale } from '../db/queries';
 import { generateInvoicePdf } from '../invoice/invoicePdf';
+import { requireSalesAccess } from './rbac';
 
 export const registerSalesIpc = (): void => {
   ipcMain.handle('sales:create', async (_e, payload) => {
-    const result = createSale(payload);
-    const pdf = await generateInvoicePdf({ ...payload, invoiceNumber: result.invoiceNumber });
+    requireSalesAccess(payload);
+    const salePayload = (payload as any)?.sale ?? payload;
+    const result = createSale(salePayload);
+    const pdf = await generateInvoicePdf({ ...salePayload, invoiceNumber: result.invoiceNumber });
     return { ...result, pdf };
   });
 
-  ipcMain.handle('sales:print-invoice', async (_e, html: string) => {
+  ipcMain.handle('sales:print-invoice', async (_e, payload) => {
+    requireSalesAccess(payload);
+    const html = typeof payload === 'string' ? payload : String((payload as any)?.html ?? '');
     const win = new BrowserWindow({ show: false });
     await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     win.webContents.print({ silent: false });

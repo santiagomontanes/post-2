@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ipc } from '../services/ipcClient';
+import { getAuthContext } from '../services/session';
 
 export const Cash = ({ user }: { user: any }) => {
   const [open, setOpen] = useState<any>(null);
@@ -12,9 +13,9 @@ export const Cash = ({ user }: { user: any }) => {
 
   const refresh = async (): Promise<void> => {
     const [openCash, cashStatus, openSuggestion] = await Promise.all([
-      ipc.cash.getOpen(),
-      ipc.cash.getStatus(),
-      ipc.cash.getOpenSuggestion(),
+      ipc.cash.getOpen(getAuthContext()),
+      ipc.cash.getStatus(getAuthContext()),
+      ipc.cash.getOpenSuggestion(getAuthContext()),
     ]);
     setOpen(openCash);
     setStatus(cashStatus);
@@ -68,7 +69,7 @@ export const Cash = ({ user }: { user: any }) => {
             <p>Diferencia: {diff}</p>
             <button
               onClick={async () => {
-                const res = await ipc.cash.close({ id: open.id, countedCash: counted, userId: user.id, notes: '' });
+                const res = await ipc.cash.close({ ...getAuthContext(), cash: { id: open.id, countedCash: counted, userId: user.id, notes: '' } });
                 alert(`Cerrada. Dif: ${res.diff}. Backup: ${res.backupPath}`);
                 setCounted(0);
                 await refresh();
@@ -108,7 +109,7 @@ export const Cash = ({ user }: { user: any }) => {
                 alert('Debes ingresar una nota/justificación cuando el efectivo inicial difiere del sugerido.');
                 return;
               }
-              await ipc.cash.open({ userId: user.id, openingCash: opening, openingNotes: openingNotes.trim() });
+              await ipc.cash.open({ ...getAuthContext(), cash: { userId: user.id, openingCash: opening, openingNotes: openingNotes.trim() } });
               setTouched(false);
               setOpeningNotes('');
               await refresh();

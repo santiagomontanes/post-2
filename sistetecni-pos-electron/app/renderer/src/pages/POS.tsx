@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listProducts } from '../services/products';
+import { listPosProducts } from '../services/products';
 import { createSale, printInvoice } from '../services/sales';
 import { Modal } from '../ui/Modal';
 
@@ -31,7 +31,7 @@ export const POS = ({ user }: { user: any }) => {
   const [freeQty, setFreeQty] = useState(1);
 
   useEffect(() => {
-    void listProducts(q).then(setProducts);
+    void listPosProducts(q).then(setProducts);
   }, [q]);
 
   const subtotal = useMemo(() => cart.reduce((a, c) => a + c.line_total, 0), [cart]);
@@ -75,7 +75,7 @@ export const POS = ({ user }: { user: any }) => {
           unit_price: p.sale_price,
           line_total: p.sale_price,
           stock: p.stock,
-          unit_cost: Number(p.purchase_price ?? 0),
+          unit_cost: 0,
         },
       ];
     });
