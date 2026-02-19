@@ -12,9 +12,9 @@ import { Users } from './pages/Users';
 const AdminOnly = ({ user, children }: { user: any; children: JSX.Element }) =>
   user?.role === 'ADMIN' ? children : <Navigate to="/pos" replace />;
 
-export const AppRoutes = ({ user }: { user: any }) => (
+export const AppRoutes = ({ user, onLogout }: { user: any; onLogout: () => void }) => (
   <Routes>
-    <Route element={<Layout user={user} />}>
+    <Route element={<Layout user={user} onLogout={onLogout} />}>
       <Route path="/pos" element={<POS user={user} />} />
       <Route path="/dashboard" element={<AdminOnly user={user}><Dashboard /></AdminOnly>} />
       <Route path="/inventory" element={<AdminOnly user={user}><Inventory role={user.role} /></AdminOnly>} />
