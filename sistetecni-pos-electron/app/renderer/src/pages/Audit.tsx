@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { listAudit } from '../services/audit';
+import { listUsersBasic } from '../services/users';
 
 const ACTIONS = ['', 'USER_CREATE', 'USER_RESET_PASSWORD', 'SALE_CREATE', 'SALE_VOID', 'CASH_OPEN', 'CASH_CLOSE', 'PRODUCT_SAVE', 'PRODUCT_UPDATE', 'PRODUCT_DELETE', 'BACKUP_CREATE'];
+
+type BasicUser = { id: string; name: string; email: string; role: string };
 
 export const Audit = () => {
   const now = new Date();
@@ -11,6 +14,8 @@ export const Audit = () => {
   const [actorId, setActorId] = useState('');
   const [action, setAction] = useState('');
   const [items, setItems] = useState<any[]>([]);
+  const [users, setUsers] = useState<BasicUser[]>([]);
+  const [usersError, setUsersError] = useState('');
   const [openId, setOpenId] = useState('');
 
   const load = async (): Promise<void> => {
@@ -25,8 +30,20 @@ export const Audit = () => {
     setItems(Array.isArray(data) ? data : []);
   };
 
+  const loadUsers = async (): Promise<void> => {
+    try {
+      const data = await listUsersBasic();
+      setUsers(Array.isArray(data) ? (data as BasicUser[]) : []);
+      setUsersError('');
+    } catch {
+      setUsers([]);
+      setUsersError('No se pudo cargar usuarios');
+    }
+  };
+
   useEffect(() => {
     void load();
+    void loadUsers();
   }, []);
 
   return (
@@ -35,7 +52,13 @@ export const Audit = () => {
         <h2>Auditoría</h2>
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        <input placeholder="Actor user id" value={actorId} onChange={(e) => setActorId(e.target.value)} />
+        <select value={actorId} onChange={(e) => setActorId(e.target.value)} disabled={users.length === 0}>
+          <option value="">Todos los usuarios</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>{`${u.name} (${u.role}) - ${u.email}`}</option>
+          ))}
+        </select>
+        {usersError ? <small>{usersError}</small> : null}
         <select value={action} onChange={(e) => setAction(e.target.value)}>
           {ACTIONS.map((a) => <option key={a || 'all'} value={a}>{a || 'Todas las acciones'}</option>)}
         </select>

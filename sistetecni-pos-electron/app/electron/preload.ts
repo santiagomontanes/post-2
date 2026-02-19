@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('api', {
 
   users: {
     list: (payload: unknown) => ipcRenderer.invoke('users:list', payload),
+    listBasic: (payload: unknown) => ipcRenderer.invoke('users:list-basic', payload),
     create: (payload: unknown) => ipcRenderer.invoke('users:create', payload),
     resetPassword: (payload: unknown) => ipcRenderer.invoke('users:reset-password', payload),
   },

@@ -84,6 +84,9 @@ export const authUser = (email: string, password: string): { id: string; name: s
 export const listUsers = (): unknown[] =>
   getDb().prepare('SELECT id,name,email,role,created_at FROM users ORDER BY created_at DESC').all();
 
+export const listUsersBasic = (): unknown[] =>
+  getDb().prepare('SELECT id,name,email,role FROM users ORDER BY name ASC').all();
+
 export const createUser = (payload: { name: string; email: string; password: string; role: Role }): string => {
   const email = String(payload.email ?? '').trim().toLowerCase();
   if (!email) throw new Error('Email requerido');

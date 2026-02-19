@@ -1,4 +1,4 @@
-import { createUser, listUsers, resetUserPassword } from '../app/electron/db/queries';
+import { createUser, listUsers, listUsersBasic, resetUserPassword } from '../app/electron/db/queries';
 import { setupTestDb, teardownTestDb } from './helpers/testDb';
 
 describe('users queries', () => {
@@ -34,5 +34,15 @@ describe('users queries', () => {
     resetUserPassword({ id, newPassword: 'new-pass' });
     const after = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(id) as any;
     expect(after.password_hash).not.toBe(before.password_hash);
+  });
+
+  test('listUsersBasic returns minimal fields without password_hash', () => {
+    createUser({ name: 'Basic', email: 'basic@test.com', password: 'x', role: 'SUPERVISOR' });
+    const users = listUsersBasic() as any[];
+    const user = users.find((u) => u.email === 'basic@test.com');
+    expect(user).toBeTruthy();
+    expect(user.created_at).toBeUndefined();
+    expect(user.password_hash).toBeUndefined();
+    expect(user.role).toBe('SUPERVISOR');
   });
 });

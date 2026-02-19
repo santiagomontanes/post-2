@@ -1,11 +1,16 @@
 import { ipcMain } from 'electron';
-import { createUser, listUsers, logAudit, resetUserPassword } from '../db/queries';
+import { createUser, listUsers, listUsersBasic, logAudit, resetUserPassword } from '../db/queries';
 import { requirePermissionFromPayload } from './rbac';
 
 export const registerUsersIpc = (): void => {
   ipcMain.handle('users:list', (_e, payload) => {
     requirePermissionFromPayload(payload, 'users:read');
     return listUsers();
+  });
+
+  ipcMain.handle('users:list-basic', (_e, payload) => {
+    requirePermissionFromPayload(payload, 'users:read');
+    return listUsersBasic();
   });
 
   ipcMain.handle('users:create', (_e, payload) => {
