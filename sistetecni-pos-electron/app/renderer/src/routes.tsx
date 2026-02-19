@@ -7,6 +7,7 @@ import { Expenses } from './pages/Expenses';
 import { Cash } from './pages/Cash';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { Users } from './pages/Users';
 
 const AdminOnly = ({ user, children }: { user: any; children: JSX.Element }) =>
   user?.role === 'ADMIN' ? children : <Navigate to="/pos" replace />;
@@ -21,6 +22,7 @@ export const AppRoutes = ({ user }: { user: any }) => (
       <Route path="/cash" element={<AdminOnly user={user}><Cash user={user} /></AdminOnly>} />
       <Route path="/reports" element={<AdminOnly user={user}><Reports /></AdminOnly>} />
       <Route path="/settings" element={<AdminOnly user={user}><Settings role={user.role} /></AdminOnly>} />
+      <Route path="/users" element={<AdminOnly user={user}><Users /></AdminOnly>} />
       <Route path="*" element={<Navigate to={user?.role === 'ADMIN' ? '/dashboard' : '/pos'} replace />} />
     </Route>
   </Routes>

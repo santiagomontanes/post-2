@@ -12,6 +12,36 @@ export const authUser = (email: string, password: string): { id: string; name: s
   return { id: row.id, name: row.name, role: row.role, email: row.email };
 };
 
+export const listUsers = (): unknown[] =>
+  getDb().prepare('SELECT id,name,email,role,created_at FROM users ORDER BY created_at DESC').all();
+
+export const createUser = (payload: { name: string; email: string; password: string; role: Role }): string => {
+  const email = String(payload.email ?? '').trim().toLowerCase();
+  if (!email) throw new Error('Email requerido');
+
+  const exists = getDb().prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string } | undefined;
+  if (exists) throw new Error('El email ya existe');
+
+  const id = uuid();
+  const hash = bcrypt.hashSync(payload.password, 10);
+  getDb().prepare('INSERT INTO users (id,name,email,password_hash,role,created_at) VALUES (?,?,?,?,?,?)').run(
+    id,
+    String(payload.name ?? '').trim(),
+    email,
+    hash,
+    payload.role,
+    new Date().toISOString(),
+  );
+  return id;
+};
+
+export const resetUserPassword = (payload: { id: string; newPassword: string }): void => {
+  if (!payload?.id) throw new Error('Missing user id');
+  const hash = bcrypt.hashSync(payload.newPassword, 10);
+  const result = getDb().prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, payload.id);
+  if (!result.changes) throw new Error('User not updated');
+};
+
 export const listProducts = (search = ''): unknown[] => {
   const q = `%${search}%`;
   return getDb()

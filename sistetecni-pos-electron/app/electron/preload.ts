@@ -33,6 +33,12 @@ contextBridge.exposeInMainWorld('api', {
     todaySummary: (payload: unknown) => ipcRenderer.invoke('reports:today-summary', payload),
     last7DaysSales: (payload: unknown) => ipcRenderer.invoke('reports:last-7-days-sales', payload),
   },
+
+  users: {
+    list: (payload: unknown) => ipcRenderer.invoke('users:list', payload),
+    create: (payload: unknown) => ipcRenderer.invoke('users:create', payload),
+    resetPassword: (payload: unknown) => ipcRenderer.invoke('users:reset-password', payload),
+  },
   backups: {
     createManual: (payload: unknown) => ipcRenderer.invoke('backup:create-manual', payload),
     export: (payload: unknown) => ipcRenderer.invoke('backups:export', payload),

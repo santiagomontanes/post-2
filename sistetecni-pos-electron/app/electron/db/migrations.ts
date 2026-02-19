@@ -84,6 +84,13 @@ export const runMigrations = (db: Database.Database): void => {
     );
   `);
 
+
+  const userCols = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+  if (!userCols.some((c) => c.name === 'created_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN created_at TEXT');
+    db.prepare("UPDATE users SET created_at = ? WHERE created_at IS NULL OR created_at = ''").run(new Date().toISOString());
+  }
+
   const productCols = db.prepare('PRAGMA table_info(products)').all() as Array<{ name: string }>;
   if (!productCols.some((c) => c.name === 'active')) {
     db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1');

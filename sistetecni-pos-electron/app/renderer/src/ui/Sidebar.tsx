@@ -3,7 +3,7 @@ import type { Role } from '../types';
 
 export const Sidebar = ({ role }: { role: Role }) => {
   const routes = role === 'ADMIN'
-    ? ['/dashboard', '/pos', '/inventory', '/expenses', '/cash', '/reports', '/settings']
+    ? ['/dashboard', '/pos', '/inventory', '/expenses', '/cash', '/reports', '/settings', '/users']
     : ['/pos'];
 
   return (
