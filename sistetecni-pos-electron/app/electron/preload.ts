@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld('api', {
     create: (payload: unknown) => ipcRenderer.invoke('users:create', payload),
     resetPassword: (payload: unknown) => ipcRenderer.invoke('users:reset-password', payload),
   },
+  audit: {
+    list: (payload: unknown) => ipcRenderer.invoke('audit:list', payload),
+  },
   backups: {
     createManual: (payload: unknown) => ipcRenderer.invoke('backup:create-manual', payload),
     export: (payload: unknown) => ipcRenderer.invoke('backups:export', payload),

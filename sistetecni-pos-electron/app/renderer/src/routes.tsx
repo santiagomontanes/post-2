@@ -9,6 +9,7 @@ import { Cash } from './pages/Cash';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Users } from './pages/Users';
+import { Audit } from './pages/Audit';
 
 const RequirePermission = ({ user, permission, children }: { user: any; permission: Permission; children: JSX.Element }) =>
   can(user?.role, permission) ? children : <Navigate to="/pos" replace />;
@@ -24,6 +25,7 @@ export const AppRoutes = ({ user, onLogout }: { user: any; onLogout: () => void 
       <Route path="/reports" element={<RequirePermission user={user} permission="reports:read"><Reports /></RequirePermission>} />
       <Route path="/settings" element={<RequirePermission user={user} permission="config:write"><Settings role={user.role} /></RequirePermission>} />
       <Route path="/users" element={<RequirePermission user={user} permission="users:read"><Users /></RequirePermission>} />
+      <Route path="/audit" element={<RequirePermission user={user} permission="audit:read"><Audit /></RequirePermission>} />
       <Route path="*" element={<Navigate to={can(user?.role, 'reports:read') ? '/dashboard' : '/pos'} replace />} />
     </Route>
   </Routes>

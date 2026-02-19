@@ -9,6 +9,7 @@ import { registerReportsIpc } from './ipc/reports.ipc';
 import { ensureDailyBackup, registerBackupsIpc } from './ipc/backups.ipc';
 import { registerCashIpc } from './ipc/cash.ipc';
 import { registerUsersIpc } from './ipc/users.ipc';
+import { registerAuditIpc } from './ipc/audit.ipc';
 
 const createWindow = async (): Promise<void> => {
   const win = new BrowserWindow({
@@ -36,6 +37,7 @@ app.whenReady().then(async () => {
   registerBackupsIpc();
   registerCashIpc();
   registerUsersIpc();
+  registerAuditIpc();
   await ensureDailyBackup();
   await createWindow();
 });

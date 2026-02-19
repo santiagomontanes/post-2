@@ -4,6 +4,75 @@ import { getDb } from './db';
 
 export type Role = 'ADMIN' | 'SUPERVISOR' | 'SELLER';
 
+
+export type AuditLogAction =
+  | 'USER_CREATE'
+  | 'USER_RESET_PASSWORD'
+  | 'SALE_CREATE'
+  | 'SALE_VOID'
+  | 'CASH_OPEN'
+  | 'CASH_CLOSE'
+  | 'PRODUCT_SAVE'
+  | 'PRODUCT_UPDATE'
+  | 'PRODUCT_DELETE'
+  | 'BACKUP_CREATE';
+
+export type AuditEntityType = 'USER' | 'SALE' | 'CASH_SESSION' | 'PRODUCT' | 'BACKUP';
+
+export const logAudit = (input: {
+  actorId: string;
+  action: AuditLogAction;
+  entityType: AuditEntityType;
+  entityId?: string | null;
+  metadata?: unknown;
+}): string => {
+  const id = uuid();
+  getDb().prepare('INSERT INTO audit_logs (id,actor_user_id,action,entity_type,entity_id,metadata,created_at) VALUES (?,?,?,?,?,?,?)').run(
+    id,
+    input.actorId,
+    input.action,
+    input.entityType,
+    input.entityId ?? null,
+    input.metadata == null ? null : JSON.stringify(input.metadata),
+    new Date().toISOString(),
+  );
+  return id;
+};
+
+export const listAuditLogs = (filters: {
+  from: string;
+  to: string;
+  actorId?: string;
+  action?: string;
+  limit?: number;
+  offset?: number;
+}): unknown[] => {
+  const params: unknown[] = [filters.from, filters.to];
+  const where: string[] = ['al.created_at BETWEEN ? AND ?'];
+  if (filters.actorId) {
+    where.push('al.actor_user_id = ?');
+    params.push(filters.actorId);
+  }
+  if (filters.action) {
+    where.push('al.action = ?');
+    params.push(filters.action);
+  }
+  params.push(Math.max(1, Math.min(Number(filters.limit ?? 100), 500)));
+  params.push(Math.max(0, Number(filters.offset ?? 0)));
+
+  return getDb()
+    .prepare(
+      `SELECT al.id, al.created_at, al.actor_user_id, u.name as actor_name, u.email as actor_email,
+              al.action, al.entity_type, al.entity_id, al.metadata
+       FROM audit_logs al
+       LEFT JOIN users u ON u.id = al.actor_user_id
+       WHERE ${where.join(' AND ')}
+       ORDER BY al.created_at DESC
+       LIMIT ? OFFSET ?`,
+    )
+    .all(...params);
+};
+
 export const authUser = (email: string, password: string): { id: string; name: string; role: Role; email: string } | null => {
   const row = getDb().prepare('SELECT id,name,email,password_hash,role FROM users WHERE email = ?').get(email) as
     | { id: string; name: string; email: string; password_hash: string; role: Role }

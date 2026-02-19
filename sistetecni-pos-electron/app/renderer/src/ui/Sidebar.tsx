@@ -11,6 +11,7 @@ const navItems: Array<{ path: string; permission: Permission }> = [
   { path: '/reports', permission: 'reports:read' },
   { path: '/settings', permission: 'config:write' },
   { path: '/users', permission: 'users:read' },
+  { path: '/audit', permission: 'audit:read' },
 ];
 
 export const Sidebar = ({ role }: { role: Role }) => (

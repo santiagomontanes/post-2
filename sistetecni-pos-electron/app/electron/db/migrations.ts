@@ -67,6 +67,18 @@ export const runMigrations = (db: Database.Database): void => {
       created_at TEXT NOT NULL
     );
 
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      actor_user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT,
+      metadata TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (actor_user_id) REFERENCES users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS cash_closures (
       id TEXT PRIMARY KEY,
       opened_at TEXT NOT NULL,

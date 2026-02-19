@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { app, dialog, ipcMain } from 'electron';
 import { getDb, getDbPath } from '../db/db';
+import { logAudit } from '../db/queries';
 import { requirePermissionFromPayload } from './rbac';
 
 type BackupReason = 'manual' | 'daily' | 'cash_close';
@@ -66,7 +67,10 @@ export const registerBackupsIpc = (): void => {
   ipcMain.handle('backup:create-manual', async (_e, payload) => {
     try {
       requirePermissionFromPayload(payload, 'config:write');
-      return await createBackup('manual');
+      const out = await createBackup('manual');
+      const actorId = String((payload as any)?.userId ?? '');
+      if (actorId) logAudit({ actorId, action: 'BACKUP_CREATE', entityType: 'BACKUP', entityId: out, metadata: { reason: 'manual' } });
+      return out;
     } catch {
       return null;
     }
