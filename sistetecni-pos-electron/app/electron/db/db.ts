@@ -25,7 +25,7 @@ export const closeDb = (): void => {
 };
 
 const ensureCriticalTables = (db: Database.Database): void => {
-  const critical = ['users', 'products', 'sales'];
+  const critical = ['users', 'products', 'sales', 'audit_logs'];
   const missing = critical.filter((name) => {
     const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name) as { name: string } | undefined;
     return !row;
