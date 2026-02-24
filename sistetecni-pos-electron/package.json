@@ -2,7 +2,7 @@
   "name": "sistetecni-pos-electron",
   "version": "1.0.0",
   "description": "POS offline para Sistetecni (Electron + React + SQLite)",
-  "main": "dist/electron/main.js",
+  "main": "dist/electron/app/electron/main.js",
   "author": "Sistetecni",
   "license": "MIT",
   "scripts": {
