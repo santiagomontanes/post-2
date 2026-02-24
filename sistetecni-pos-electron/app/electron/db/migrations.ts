@@ -2,6 +2,9 @@ import type Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import { v4 as uuid } from 'uuid';
 
+const tableExists = (db: Database.Database, name: string): boolean =>
+  Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name));
+
 export const runMigrations = (db: Database.Database): void => {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -96,54 +99,43 @@ export const runMigrations = (db: Database.Database): void => {
   `);
 
   const now = new Date().toISOString();
-  const usersSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql?: string } | undefined;
-  const usersCols = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
-  const usersHasSupervisor = usersSchema?.sql?.includes("'SUPERVISOR'") ?? false;
-  const usersHasCreatedAt = usersCols.some((c) => c.name === 'created_at');
+  const usersExists = tableExists(db, 'users');
+  const usersOldExistsBefore = tableExists(db, 'users_old');
 
-  // Safe users migration:
-  // - never assumes users_old exists
-  // - only rebuilds when required by schema mismatch
-  // - if users_old exists from prior interrupted migrations, it backfills users safely
-  const usersOldExists = Boolean(
-    db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users_old'").get() as { name: string } | undefined,
-  );
+  if (usersExists && !usersOldExistsBefore) {
+    const usersSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql?: string } | undefined;
+    const usersCols = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+    const usersHasSupervisor = usersSchema?.sql?.includes("'SUPERVISOR'") ?? false;
+    const usersHasCreatedAt = usersCols.some((c) => c.name === 'created_at');
 
-  if ((!usersHasSupervisor || !usersHasCreatedAt) && !usersOldExists) {
-    db.exec('PRAGMA foreign_keys=OFF');
-    db.exec('ALTER TABLE users RENAME TO users_old');
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL CHECK (role in ('ADMIN','SUPERVISOR','SELLER')),
-        created_at TEXT NOT NULL
-      );
-    `);
-
-    if (usersHasCreatedAt) {
+    if (!usersHasSupervisor || !usersHasCreatedAt) {
+      db.exec('PRAGMA foreign_keys=OFF');
+      db.exec('ALTER TABLE users RENAME TO users_old');
       db.exec(`
-        INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
-        SELECT id,name,email,password_hash,
-          CASE WHEN role IN ('ADMIN','SUPERVISOR','SELLER') THEN role ELSE 'SELLER' END,
-          COALESCE(NULLIF(created_at, ''), '${now}')
-        FROM users_old;
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL CHECK (role in ('ADMIN','SUPERVISOR','SELLER')),
+          created_at TEXT NOT NULL
+        );
       `);
-    } else {
-      db.exec(`
-        INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
-        SELECT id,name,email,password_hash,
-          CASE WHEN role IN ('ADMIN','SUPERVISOR','SELLER') THEN role ELSE 'SELLER' END,
-          '${now}'
-        FROM users_old;
-      `);
+      if (tableExists(db, 'users_old')) {
+        db.exec(`
+          INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
+          SELECT id,name,email,password_hash,
+            CASE WHEN role IN ('ADMIN','SUPERVISOR','SELLER') THEN role ELSE 'SELLER' END,
+            COALESCE(NULLIF(created_at, ''), '${now}')
+          FROM users_old;
+        `);
+      }
+      db.exec('DROP TABLE IF EXISTS users_old');
+      db.exec('PRAGMA foreign_keys=ON');
     }
+  }
 
-    db.exec('DROP TABLE IF EXISTS users_old');
-    db.exec('PRAGMA foreign_keys=ON');
-  } else if (usersOldExists) {
+  if (tableExists(db, 'users_old')) {
     db.exec('PRAGMA foreign_keys=OFF');
     db.exec(`
       CREATE TABLE IF NOT EXISTS users (
