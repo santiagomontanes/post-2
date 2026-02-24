@@ -67,7 +67,6 @@ export const runMigrations = (db: Database.Database): void => {
       created_at TEXT NOT NULL
     );
 
-
     CREATE TABLE IF NOT EXISTS audit_logs (
       id TEXT PRIMARY KEY,
       actor_user_id TEXT NOT NULL,
@@ -96,19 +95,25 @@ export const runMigrations = (db: Database.Database): void => {
     );
   `);
 
-
-
-  const userColsBefore = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+  const now = new Date().toISOString();
   const usersSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql?: string } | undefined;
+  const usersCols = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
   const usersHasSupervisor = usersSchema?.sql?.includes("'SUPERVISOR'") ?? false;
-  const usersHasCreatedAt = userColsBefore.some((c) => c.name === 'created_at');
+  const usersHasCreatedAt = usersCols.some((c) => c.name === 'created_at');
 
-  if (!usersHasSupervisor || !usersHasCreatedAt) {
-    const now = new Date().toISOString();
+  // Safe users migration:
+  // - never assumes users_old exists
+  // - only rebuilds when required by schema mismatch
+  // - if users_old exists from prior interrupted migrations, it backfills users safely
+  const usersOldExists = Boolean(
+    db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users_old'").get() as { name: string } | undefined,
+  );
+
+  if ((!usersHasSupervisor || !usersHasCreatedAt) && !usersOldExists) {
     db.exec('PRAGMA foreign_keys=OFF');
     db.exec('ALTER TABLE users RENAME TO users_old');
     db.exec(`
-      CREATE TABLE users (
+      CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
@@ -120,17 +125,44 @@ export const runMigrations = (db: Database.Database): void => {
 
     if (usersHasCreatedAt) {
       db.exec(`
-        INSERT INTO users (id,name,email,password_hash,role,created_at)
-        SELECT id,name,email,password_hash,role,COALESCE(NULLIF(created_at, ''), '${now}') FROM users_old;
+        INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
+        SELECT id,name,email,password_hash,
+          CASE WHEN role IN ('ADMIN','SUPERVISOR','SELLER') THEN role ELSE 'SELLER' END,
+          COALESCE(NULLIF(created_at, ''), '${now}')
+        FROM users_old;
       `);
     } else {
       db.exec(`
-        INSERT INTO users (id,name,email,password_hash,role,created_at)
-        SELECT id,name,email,password_hash,role,'${now}' FROM users_old;
+        INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
+        SELECT id,name,email,password_hash,
+          CASE WHEN role IN ('ADMIN','SUPERVISOR','SELLER') THEN role ELSE 'SELLER' END,
+          '${now}'
+        FROM users_old;
       `);
     }
 
-    db.exec('DROP TABLE users_old');
+    db.exec('DROP TABLE IF EXISTS users_old');
+    db.exec('PRAGMA foreign_keys=ON');
+  } else if (usersOldExists) {
+    db.exec('PRAGMA foreign_keys=OFF');
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role in ('ADMIN','SUPERVISOR','SELLER')),
+        created_at TEXT NOT NULL
+      );
+    `);
+    db.exec(`
+      INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
+      SELECT id,name,email,password_hash,
+        CASE WHEN role IN ('ADMIN','SUPERVISOR','SELLER') THEN role ELSE 'SELLER' END,
+        COALESCE(NULLIF(created_at, ''), '${now}')
+      FROM users_old;
+    `);
+    db.exec('DROP TABLE IF EXISTS users_old');
     db.exec('PRAGMA foreign_keys=ON');
   }
 
@@ -138,9 +170,6 @@ export const runMigrations = (db: Database.Database): void => {
   if (!productCols.some((c) => c.name === 'active')) {
     db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
   }
-
-
-
 
   const saleItemCols = db.prepare('PRAGMA table_info(sale_items)').all() as Array<{ name: string; notnull: number }>;
   const hasDescription = saleItemCols.some((c) => c.name === 'description');

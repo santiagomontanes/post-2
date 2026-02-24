@@ -24,12 +24,25 @@ export const closeDb = (): void => {
   }
 };
 
+const ensureCriticalTables = (db: Database.Database): void => {
+  const critical = ['users', 'products', 'sales'];
+  const missing = critical.filter((name) => {
+    const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name) as { name: string } | undefined;
+    return !row;
+  });
+
+  if (missing.length > 0) {
+    runMigrations(db);
+  }
+};
+
 export const getDb = (): Database.Database => {
   if (dbOverrideForTests) return dbOverrideForTests;
   if (!dbInstance) {
     dbInstance = new Database(getDbPath());
     dbInstance.pragma('journal_mode = WAL');
     runMigrations(dbInstance);
+    ensureCriticalTables(dbInstance);
     seedDefaultAdmin(dbInstance);
   }
   return dbInstance;
