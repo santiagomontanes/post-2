@@ -2,10 +2,33 @@ import type Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import { v4 as uuid } from 'uuid';
 
-const tableExists = (db: Database.Database, name: string): boolean =>
-  Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name));
+function tableExists(db: Database.Database, name: string): boolean {
+  const row = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")
+    .get(name);
+  return !!row;
+}
+
+function viewExists(db: Database.Database, name: string): boolean {
+  const row = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type='view' AND name=?")
+    .get(name);
+  return !!row;
+}
+
+function getTableColumns(db: Database.Database, table: string): string[] {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    return cols.map((c) => c.name);
+  } catch {
+    return [];
+  }
+}
 
 export const runMigrations = (db: Database.Database): void => {
+  // =========================
+  // BASE TABLES
+  // =========================
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -98,45 +121,37 @@ export const runMigrations = (db: Database.Database): void => {
     );
   `);
 
-  const now = new Date().toISOString();
-  const usersExists = tableExists(db, 'users');
-  const usersOldExistsBefore = tableExists(db, 'users_old');
+  // =========================
+  // SAFE USERS SCHEMA CHECK
+  // =========================
+  const userColsBefore = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+  const usersSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+    .get() as { sql?: string } | undefined;
 
-  if (usersExists && !usersOldExistsBefore) {
-    const usersSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get() as { sql?: string } | undefined;
-    const usersCols = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
-    const usersHasSupervisor = usersSchema?.sql?.includes("'SUPERVISOR'") ?? false;
-    const usersHasCreatedAt = usersCols.some((c) => c.name === 'created_at');
+  const usersHasSupervisor = usersSchema?.sql?.includes("'SUPERVISOR'") ?? false;
+  const usersHasCreatedAt = userColsBefore.some((c) => c.name === 'created_at');
 
-    if (!usersHasSupervisor || !usersHasCreatedAt) {
-      db.exec('PRAGMA foreign_keys=OFF');
-      db.exec('ALTER TABLE users RENAME TO users_old');
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          email TEXT NOT NULL UNIQUE,
-          password_hash TEXT NOT NULL,
-          role TEXT NOT NULL CHECK (role in ('ADMIN','SUPERVISOR','SELLER')),
-          created_at TEXT NOT NULL
-        );
-      `);
-      if (tableExists(db, 'users_old')) {
-        db.exec(`
-          INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
-          SELECT id,name,email,password_hash,
-            CASE WHEN role IN ('ADMIN','SUPERVISOR','SELLER') THEN role ELSE 'SELLER' END,
-            COALESCE(NULLIF(created_at, ''), '${now}')
-          FROM users_old;
-        `);
-      }
-      db.exec('DROP TABLE IF EXISTS users_old');
-      db.exec('PRAGMA foreign_keys=ON');
-    }
-  }
+  // Si falta SUPERVISOR en CHECK o falta created_at, migrar users de forma segura
+  if (!usersHasSupervisor || !usersHasCreatedAt) {
+    const now = new Date().toISOString();
 
-  if (tableExists(db, 'users_old')) {
     db.exec('PRAGMA foreign_keys=OFF');
+
+    // 1) Si existe VIEW users_old, borrarlo (FK no funciona con views)
+    if (viewExists(db, 'users_old')) {
+      db.exec('DROP VIEW IF EXISTS users_old');
+    }
+
+    // 2) Asegurar users_old como tabla temporal si hace falta renombrar
+    const usersExists = tableExists(db, 'users');
+    const usersOldExists = tableExists(db, 'users_old');
+
+    if (usersExists && !usersOldExists) {
+      db.exec('ALTER TABLE users RENAME TO users_old');
+    }
+
+    // 3) Crear tabla users final
     db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -147,22 +162,152 @@ export const runMigrations = (db: Database.Database): void => {
         created_at TEXT NOT NULL
       );
     `);
-    db.exec(`
-      INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
-      SELECT id,name,email,password_hash,
-        CASE WHEN role IN ('ADMIN','SUPERVISOR','SELLER') THEN role ELSE 'SELLER' END,
-        COALESCE(NULLIF(created_at, ''), '${now}')
-      FROM users_old;
-    `);
-    db.exec('DROP TABLE IF EXISTS users_old');
+
+    // 4) Migrar desde users_old solo si existe
+    if (tableExists(db, 'users_old')) {
+      const oldCols = getTableColumns(db, 'users_old');
+      const oldHasCreatedAt = oldCols.includes('created_at');
+
+      if (oldHasCreatedAt) {
+        db.exec(`
+          INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
+          SELECT
+            id,
+            name,
+            email,
+            password_hash,
+            role,
+            COALESCE(NULLIF(created_at, ''), '${now}')
+          FROM users_old;
+        `);
+      } else {
+        db.exec(`
+          INSERT OR IGNORE INTO users (id,name,email,password_hash,role,created_at)
+          SELECT
+            id,
+            name,
+            email,
+            password_hash,
+            role,
+            '${now}'
+          FROM users_old;
+        `);
+      }
+    }
+
     db.exec('PRAGMA foreign_keys=ON');
   }
 
+  // =========================
+  // COMPAT MODE (NO CAMBIAR FUNCIONES):
+  // Mantener users_old como TABLA REAL + sincronizada
+  // Esto evita:
+  // - "no such table: users_old"
+  // - "foreign key mismatch ... audit_logs referencing users_old"
+  // =========================
+  db.exec('PRAGMA foreign_keys=OFF');
+
+  // Si existe como VIEW, eliminarlo
+  if (viewExists(db, 'users_old')) {
+    db.exec('DROP VIEW IF EXISTS users_old');
+  }
+
+  // Si users_old no existe como tabla, crearla y copiar desde users
+  if (!tableExists(db, 'users_old')) {
+    db.exec(`
+      CREATE TABLE users_old (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role in ('ADMIN','SUPERVISOR','SELLER')),
+        created_at TEXT NOT NULL
+      );
+
+      INSERT OR IGNORE INTO users_old (id,name,email,password_hash,role,created_at)
+      SELECT id,name,email,password_hash,role,created_at FROM users;
+    `);
+  } else {
+    // Si existe, asegurar columnas mínimas (si tu users_old vieja era distinta, la “rellenamos”)
+    const uoCols = getTableColumns(db, 'users_old');
+    const missingCreatedAt = !uoCols.includes('created_at');
+
+    // Si está muy vieja (sin created_at), la reconstruimos sin perder datos básicos
+    if (missingCreatedAt) {
+      const now = new Date().toISOString();
+      db.exec(`
+        ALTER TABLE users_old RENAME TO users_old_legacy;
+
+        CREATE TABLE users_old (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL CHECK (role in ('ADMIN','SUPERVISOR','SELLER')),
+          created_at TEXT NOT NULL
+        );
+
+        INSERT OR IGNORE INTO users_old (id,name,email,password_hash,role,created_at)
+        SELECT
+          id,
+          name,
+          email,
+          password_hash,
+          role,
+          '${now}'
+        FROM users_old_legacy;
+
+        DROP TABLE users_old_legacy;
+      `);
+    }
+
+    // Backfill por si users tiene nuevos usuarios
+    db.exec(`
+      INSERT OR IGNORE INTO users_old (id,name,email,password_hash,role,created_at)
+      SELECT id,name,email,password_hash,role,created_at FROM users;
+    `);
+  }
+
+  // Triggers: users -> users_old (sincronización)
+  db.exec(`
+    DROP TRIGGER IF EXISTS trg_users_to_users_old_insert;
+    DROP TRIGGER IF EXISTS trg_users_to_users_old_update;
+    DROP TRIGGER IF EXISTS trg_users_to_users_old_delete;
+
+    CREATE TRIGGER trg_users_to_users_old_insert
+    AFTER INSERT ON users
+    BEGIN
+      INSERT OR REPLACE INTO users_old (id,name,email,password_hash,role,created_at)
+      VALUES (NEW.id, NEW.name, NEW.email, NEW.password_hash, NEW.role, NEW.created_at);
+    END;
+
+    CREATE TRIGGER trg_users_to_users_old_update
+    AFTER UPDATE ON users
+    BEGIN
+      INSERT OR REPLACE INTO users_old (id,name,email,password_hash,role,created_at)
+      VALUES (NEW.id, NEW.name, NEW.email, NEW.password_hash, NEW.role, NEW.created_at);
+    END;
+
+    CREATE TRIGGER trg_users_to_users_old_delete
+    AFTER DELETE ON users
+    BEGIN
+      DELETE FROM users_old WHERE id = OLD.id;
+    END;
+  `);
+
+  db.exec('PRAGMA foreign_keys=ON');
+
+  // =========================
+  // PRODUCTS MIGRATION
+  // =========================
   const productCols = db.prepare('PRAGMA table_info(products)').all() as Array<{ name: string }>;
   if (!productCols.some((c) => c.name === 'active')) {
     db.exec('ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
   }
 
+  // =========================
+  // SALE ITEMS MIGRATION
+  // =========================
   const saleItemCols = db.prepare('PRAGMA table_info(sale_items)').all() as Array<{ name: string; notnull: number }>;
   const hasDescription = saleItemCols.some((c) => c.name === 'description');
   const hasUnitCost = saleItemCols.some((c) => c.name === 'unit_cost');
@@ -193,6 +338,9 @@ export const runMigrations = (db: Database.Database): void => {
     if (!hasUnitCost) db.exec('ALTER TABLE sale_items ADD COLUMN unit_cost REAL NOT NULL DEFAULT 0');
   }
 
+  // =========================
+  // CASH MIGRATION
+  // =========================
   const cashCols = db.prepare('PRAGMA table_info(cash_closures)').all() as Array<{ name: string }>;
   if (!cashCols.some((c) => c.name === 'opening_notes')) {
     db.exec('ALTER TABLE cash_closures ADD COLUMN opening_notes TEXT');
@@ -205,8 +353,10 @@ export const runMigrations = (db: Database.Database): void => {
 export const seedDefaultAdmin = (db: Database.Database): void => {
   const exists = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@sistetecni.com') as { id: string } | undefined;
   if (exists) return;
+
   const now = new Date().toISOString();
   const hash = bcrypt.hashSync('Admin123*', 10);
+
   db.prepare('INSERT INTO users (id,name,email,password_hash,role,created_at) VALUES (?,?,?,?,?,?)').run(
     uuid(),
     'Administrador',
@@ -215,4 +365,4 @@ export const seedDefaultAdmin = (db: Database.Database): void => {
     'ADMIN',
     now,
   );
-};
+}; 
